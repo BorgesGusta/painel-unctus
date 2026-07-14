@@ -1,5 +1,5 @@
 window.PAINEL_CONFIG = {
-  sheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTF-LoatgbiIS9wH9pqcKrs8UwFNEkQG4j6G8g9zXvufJBsYB3EPw_nTtJbqbbQOA/pub?gid=42733870&single=true&output=csv",
+  sheetUrl: "https://script.google.com/macros/s/AKfycbzWtMMeY3z6B3YvKelt15mhpWhayba4St6TSKacKcIJP1tx5ZM6SIDvpRZ9pEesRf0v1g/exec",
   refreshInterval: 15000,
   fallbackData: [
     {
