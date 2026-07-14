@@ -3,967 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta name="theme-color" content="#f4f6f2">
-  <title>Painel Comercial Unctus</title>
-
-  <style>
-    :root {
-      --background: #f4f6f2;
-      --surface: #ffffff;
-      --surface-soft: #f8faf7;
-      --text: #172019;
-      --text-soft: #697369;
-      --line: #e6ebe4;
-      --green: #356b47;
-      --green-soft: #e8f1ea;
-      --gold: #a87927;
-      --gold-soft: #f7efdf;
-      --red: #a6534b;
-      --red-soft: #f7eae8;
-      --shadow: 0 16px 45px rgba(39, 54, 43, 0.08);
-      --radius-large: 24px;
-      --radius-medium: 18px;
-      --radius-small: 12px;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      width: 100%;
-      min-height: 100%;
-      background: var(--background);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    body {
-      overflow: hidden;
-    }
-
-    button,
-    input {
-      font: inherit;
-    }
-
-    button {
-      border: 0;
-    }
-
-    #viewport {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at top left, rgba(72, 112, 82, 0.08), transparent 28%),
-        var(--background);
-    }
-
-    #dashboard {
-      width: 1920px;
-      height: 1080px;
-      flex-shrink: 0;
-      transform-origin: center center;
-      padding: 54px 64px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 14px;
-      color: var(--green);
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-    }
-
-    .brand-mark {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
-      background: var(--green);
-      box-shadow: 12px 0 0 #90aa96;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 48px;
-      line-height: 1.06;
-      letter-spacing: -0.04em;
-    }
-
-    .subtitle {
-      margin-top: 10px;
-      color: var(--text-soft);
-      font-size: 18px;
-    }
-
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(260px, 1fr));
-      gap: 16px;
-      min-width: 590px;
-    }
-
-    .summary-card {
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(226, 232, 224, 0.95);
-      border-radius: var(--radius-medium);
-      padding: 22px 24px;
-      box-shadow: 0 10px 30px rgba(39, 54, 43, 0.05);
-    }
-
-    .summary-label {
-      color: var(--text-soft);
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .summary-value {
-      margin-top: 8px;
-      font-size: 35px;
-      font-weight: 850;
-      letter-spacing: -0.04em;
-    }
-
-    .summary-caption {
-      margin-top: 5px;
-      color: var(--text-soft);
-      font-size: 13px;
-    }
-
-    #consultants {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 22px;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .consultant-card {
-      min-width: 0;
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid rgba(226, 232, 224, 0.96);
-      border-radius: var(--radius-large);
-      padding: 28px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: var(--shadow);
-    }
-
-    .consultant-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 30px;
-    }
-
-    .person {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      min-width: 0;
-    }
-
-    .avatar {
-      width: 54px;
-      height: 54px;
-      flex-shrink: 0;
-      border-radius: 16px;
-      display: grid;
-      place-items: center;
-      background: var(--green-soft);
-      color: var(--green);
-      font-size: 18px;
-      font-weight: 850;
-    }
-
-    .person-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 28px;
-      font-weight: 850;
-      letter-spacing: -0.03em;
-    }
-
-    .percentage {
-      flex-shrink: 0;
-      padding: 9px 12px;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--text-soft);
-      font-size: 14px;
-      font-weight: 800;
-    }
-
-    .metrics {
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-
-    .metric-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 16px;
-      margin-bottom: 10px;
-    }
-
-    .metric-label {
-      color: var(--text-soft);
-      font-size: 15px;
-      font-weight: 750;
-    }
-
-    .metric-value {
-      font-size: 17px;
-      font-weight: 850;
-    }
-
-    .metric-value span {
-      color: var(--text-soft);
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .track {
-      width: 100%;
-      height: 10px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: #edf1eb;
-    }
-
-    .bar {
-      height: 100%;
-      min-width: 0;
-      border-radius: inherit;
-      transition: width 600ms ease;
-    }
-
-    .card-footer {
-      margin-top: auto;
-      padding-top: 28px;
-    }
-
-    .status {
-      width: 100%;
-      padding: 14px 16px;
-      border-radius: var(--radius-small);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 14px;
-      font-weight: 800;
-    }
-
-    .status-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    .status-left {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .bottom {
-      display: grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap: 18px;
-      align-items: stretch;
-    }
-
-    .team-card {
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid rgba(226, 232, 224, 0.96);
-      border-radius: var(--radius-medium);
-      padding: 22px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      box-shadow: 0 10px 30px rgba(39, 54, 43, 0.05);
-    }
-
-    .team-label {
-      color: var(--text-soft);
-      font-size: 15px;
-      font-weight: 750;
-    }
-
-    .team-value {
-      margin-top: 5px;
-      font-size: 31px;
-      font-weight: 850;
-      letter-spacing: -0.04em;
-    }
-
-    .team-meta {
-      color: var(--text-soft);
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .update-card {
-      min-width: 250px;
-      padding: 22px 24px;
-      border-radius: var(--radius-medium);
-      background: #edf3ed;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .update-label {
-      color: var(--text-soft);
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    #lastUpdate {
-      margin-top: 6px;
-      color: var(--green);
-      font-size: 16px;
-      font-weight: 850;
-    }
-
-    #settingsButton {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      z-index: 50;
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 13px;
-      background: rgba(255, 255, 255, 0.92);
-      color: var(--text-soft);
-      cursor: pointer;
-      box-shadow: 0 10px 30px rgba(39, 54, 43, 0.11);
-      backdrop-filter: blur(12px);
-    }
-
-    #settingsButton:hover {
-      color: var(--green);
-    }
-
-    #settings {
-      position: fixed;
-      top: 72px;
-      right: 18px;
-      z-index: 50;
-      width: min(450px, calc(100vw - 36px));
-      padding: 20px;
-      display: none;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.98);
-      box-shadow: 0 24px 70px rgba(39, 54, 43, 0.18);
-    }
-
-    #settings.open {
-      display: block;
-    }
-
-    #settings label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 800;
-    }
-
-    #sheetUrl {
-      width: 100%;
-      padding: 12px 13px;
-      border: 1px solid var(--line);
-      border-radius: 11px;
-      outline: none;
-      background: var(--surface-soft);
-      color: var(--text);
-      font-size: 12px;
-    }
-
-    #sheetUrl:focus {
-      border-color: #a7baa9;
-      box-shadow: 0 0 0 4px rgba(53, 107, 71, 0.08);
-    }
-
-    .settings-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .settings-actions button {
-      padding: 11px 14px;
-      border-radius: 11px;
-      cursor: pointer;
-      font-weight: 800;
-    }
-
-    #saveButton {
-      flex: 1;
-      background: var(--green);
-      color: #ffffff;
-    }
-
-    #refreshButton {
-      background: var(--green-soft);
-      color: var(--green);
-    }
-
-    .settings-help {
-      margin-top: 11px;
-      color: var(--text-soft);
-      font-size: 11px;
-      line-height: 1.55;
-    }
-
-    #statusMessage {
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: 750;
-    }
-
-    @media (max-width: 900px) {
-      body {
-        overflow: auto;
-      }
-
-      #viewport {
-        position: static;
-        display: block;
-        overflow: visible;
-      }
-
-      #dashboard {
-        width: 100%;
-        height: auto;
-        min-height: 100vh;
-        transform: none !important;
-        padding: 72px 20px 28px;
-      }
-
-      .topbar,
-      .bottom {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .summary {
-        width: 100%;
-        min-width: 0;
-      }
-
-      #consultants {
-        grid-template-columns: 1fr;
-      }
-
-      h1 {
-        font-size: 38px;
-      }
-    }
-  </style>
+  <meta name="theme-color" content="#f5f7f4">
+  <meta name="description" content="Painel comercial da Unctus Acabamentos">
+  <title>Painel Comercial | Unctus</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <button id="settingsButton" aria-label="Configurar planilha" title="Configurar planilha">⚙</button>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-block">
+        <span class="brand-kicker">UNCTUS ACABAMENTOS</span>
+        <h1>Painel Comercial</h1>
+        <p>Acompanhamento da equipe em tempo real</p>
+      </div>
 
-  <aside id="settings" aria-label="Configuração do Google Sheets">
-    <label for="sheetUrl">Link CSV do Google Sheets</label>
-    <input id="sheetUrl" type="url" placeholder="Cole o link publicado como CSV">
+      <div class="header-actions">
+        <div class="update-pill" aria-live="polite">
+          <span class="status-dot"></span>
+          <span id="lastUpdate">Carregando dados</span>
+        </div>
 
-    <div class="settings-actions">
-      <button id="saveButton">Salvar conexão</button>
-      <button id="refreshButton">Atualizar agora</button>
-    </div>
+        <button id="refreshButton" class="icon-button" type="button" aria-label="Atualizar dados" title="Atualizar dados">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0 2.3 5.7M20 4v7h-7"/>
+          </svg>
+        </button>
+      </div>
+    </header>
 
-    <div class="settings-help">
-      O link fica salvo neste navegador. O painel consulta a planilha automaticamente a cada 15 segundos.
-    </div>
+    <main>
+      <section class="summary-grid" aria-label="Resumo da equipe">
+        <article class="summary-card">
+          <div>
+            <span class="summary-label">Orçamentos realizados</span>
+            <strong id="summaryOrcReal">0</strong>
+          </div>
+          <span id="summaryOrcMeta" class="summary-meta">Meta 0</span>
+        </article>
 
-    <div id="statusMessage">Aguardando configuração.</div>
-  </aside>
+        <article class="summary-card">
+          <div>
+            <span class="summary-label">Fechamentos realizados</span>
+            <strong id="summaryFechReal">0</strong>
+          </div>
+          <span id="summaryFechMeta" class="summary-meta">Meta 0</span>
+        </article>
 
-  <main id="viewport">
-    <section id="dashboard">
-      <header class="topbar">
+        <article class="summary-card">
+          <div>
+            <span class="summary-label">Aproveitamento médio</span>
+            <strong id="summaryAverage">0%</strong>
+          </div>
+          <span class="summary-meta">Equipe</span>
+        </article>
+      </section>
+
+      <section class="section-heading">
         <div>
-          <div class="brand">
-            <span class="brand-mark"></span>
-            UNCTUS ACABAMENTOS
-          </div>
-          <h1>Painel comercial</h1>
-          <div class="subtitle">Acompanhamento semanal da equipe de vendas</div>
+          <span class="section-kicker">DESEMPENHO INDIVIDUAL</span>
+          <h2>Resultado por consultor</h2>
         </div>
+      </section>
 
-        <div class="summary">
-          <div class="summary-card">
-            <div class="summary-label">Meta de orçamentos</div>
-            <div class="summary-value">R$ 200.000</div>
-            <div class="summary-caption">Objetivo comercial da semana</div>
-          </div>
+      <section id="consultantsGrid" class="consultants-grid" aria-live="polite"></section>
+    </main>
 
-          <div class="summary-card">
-            <div class="summary-label">Meta de vendas</div>
-            <div class="summary-value">R$ 50.000</div>
-            <div class="summary-caption">Resultado esperado da equipe</div>
-          </div>
-        </div>
-      </header>
+    <footer class="app-footer">
+      <span>Dados atualizados automaticamente pelo Google Sheets</span>
+      <span id="connectionStatus">Conectando</span>
+    </footer>
+  </div>
 
-      <section id="consultants"></section>
-
-      <footer class="bottom">
-        <div class="team-card">
+  <template id="consultantTemplate">
+    <article class="consultant-card">
+      <div class="consultant-top">
+        <div class="person">
+          <div class="avatar"></div>
           <div>
-            <div class="team-label">Orçamentos da equipe</div>
-            <div id="totalOrc" class="team-value"></div>
+            <h3 class="consultant-name"></h3>
+            <span class="consultant-position">Consultor comercial</span>
           </div>
         </div>
 
-        <div class="team-card">
-          <div>
-            <div class="team-label">Fechamentos da equipe</div>
-            <div id="totalFech" class="team-value"></div>
-          </div>
+        <div class="performance-badge">
+          <strong class="performance-value">0%</strong>
+          <span>desempenho</span>
         </div>
+      </div>
 
-        <div class="update-card">
-          <div class="update-label">Última atualização</div>
-          <div id="lastUpdate">Dados demonstrativos</div>
-        </div>
-      </footer>
-    </section>
-  </main>
-
-  <script>
-    const DEFAULT_DATA = [
-      {
-        name: "Adriano",
-        prospMeta: 75,
-        prospReal: 0,
-        orcMeta: 15,
-        orcReal: 0,
-        fechMeta: 5,
-        fechReal: 0
-      },
-      {
-        name: "Vinicius",
-        prospMeta: 75,
-        prospReal: 0,
-        orcMeta: 20,
-        orcReal: 0,
-        fechMeta: 6,
-        fechReal: 0
-      },
-      {
-        name: "Gustavo",
-        prospMeta: 75,
-        prospReal: 0,
-        orcMeta: 10,
-        orcReal: 0,
-        fechMeta: 4,
-        fechReal: 0
-      }
-    ];
-
-    const REFRESH_INTERVAL = 15000;
-    const STORAGE_KEY = "unctus_google_sheets_csv";
-
-    let consultants = DEFAULT_DATA;
-
-    const elements = {
-      dashboard: document.querySelector("#dashboard"),
-      consultants: document.querySelector("#consultants"),
-      totalOrc: document.querySelector("#totalOrc"),
-      totalFech: document.querySelector("#totalFech"),
-      lastUpdate: document.querySelector("#lastUpdate"),
-      settings: document.querySelector("#settings"),
-      settingsButton: document.querySelector("#settingsButton"),
-      sheetUrl: document.querySelector("#sheetUrl"),
-      saveButton: document.querySelector("#saveButton"),
-      refreshButton: document.querySelector("#refreshButton"),
-      statusMessage: document.querySelector("#statusMessage")
-    };
-
-    function normalizeText(value) {
-      return String(value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .toLowerCase();
-    }
-
-    function parseNumber(value) {
-      let text = String(value ?? "").trim();
-
-      if (!text) {
-        return 0;
-      }
-
-      text = text.replace(/[R$\s%]/g, "");
-
-      if (text.includes(",") && text.includes(".")) {
-        const commaIsDecimal = text.lastIndexOf(",") > text.lastIndexOf(".");
-        text = commaIsDecimal
-          ? text.replace(/\./g, "").replace(",", ".")
-          : text.replace(/,/g, "");
-      } else if (text.includes(",")) {
-        text = text.replace(",", ".");
-      }
-
-      const result = Number(text);
-      return Number.isFinite(result) ? result : 0;
-    }
-
-    function parseCSV(text) {
-      const rows = [];
-      let row = [];
-      let field = "";
-      let quoted = false;
-
-      for (let index = 0; index < text.length; index += 1) {
-        const character = text[index];
-        const nextCharacter = text[index + 1];
-
-        if (character === '"' && quoted && nextCharacter === '"') {
-          field += '"';
-          index += 1;
-        } else if (character === '"') {
-          quoted = !quoted;
-        } else if (character === "," && !quoted) {
-          row.push(field);
-          field = "";
-        } else if ((character === "\n" || character === "\r") && !quoted) {
-          if (character === "\r" && nextCharacter === "\n") {
-            index += 1;
-          }
-
-          row.push(field);
-
-          if (row.some(cell => String(cell).trim() !== "")) {
-            rows.push(row);
-          }
-
-          row = [];
-          field = "";
-        } else {
-          field += character;
-        }
-      }
-
-      row.push(field);
-
-      if (row.some(cell => String(cell).trim() !== "")) {
-        rows.push(row);
-      }
-
-      return rows;
-    }
-
-    function convertCSVToConsultants(csvText) {
-      const rows = parseCSV(csvText.replace(/^\uFEFF/, ""));
-
-      if (rows.length < 2) {
-        throw new Error("A planilha não possui dados suficientes.");
-      }
-
-      const headers = rows[0].map(normalizeText);
-      const expected = [
-        "consultor",
-        "prospmeta",
-        "prospreal",
-        "orcmeta",
-        "orcreal",
-        "fechmeta",
-        "fechreal"
-      ];
-
-      const missing = expected.filter(column => !headers.includes(column));
-
-      if (missing.length) {
-        throw new Error("Confira os nomes das colunas na aba Painel Web.");
-      }
-
-      const indexes = Object.fromEntries(
-        expected.map(column => [column, headers.indexOf(column)])
-      );
-
-      return rows
-        .slice(1)
-        .filter(row => {
-          const name = String(row[indexes.consultor] ?? "").trim();
-          return name && normalizeText(name) !== "observacao";
-        })
-        .map(row => ({
-          name: String(row[indexes.consultor]).trim(),
-          prospMeta: parseNumber(row[indexes.prospmeta]),
-          prospReal: parseNumber(row[indexes.prospreal]),
-          orcMeta: parseNumber(row[indexes.orcmeta]),
-          orcReal: parseNumber(row[indexes.orcreal]),
-          fechMeta: parseNumber(row[indexes.fechmeta]),
-          fechReal: parseNumber(row[indexes.fechreal])
-        }));
-    }
-
-    function calculatePercentage(real, target) {
-      if (!target) {
-        return 0;
-      }
-
-      return Math.min(100, Math.max(0, real / target * 100));
-    }
-
-    function getProgressColor(value) {
-      if (value >= 100) {
-        return "#356b47";
-      }
-
-      if (value >= 65) {
-        return "#a87927";
-      }
-
-      return "#a6534b";
-    }
-
-    function getStatus(person) {
-      const average = (
-        calculatePercentage(person.prospReal, person.prospMeta) +
-        calculatePercentage(person.orcReal, person.orcMeta) +
-        calculatePercentage(person.fechReal, person.fechMeta)
-      ) / 3;
-
-      if (average >= 100) {
-        return {
-          label: "Meta alcançada",
-          color: "#356b47",
-          background: "#e8f1ea"
-        };
-      }
-
-      if (average >= 70) {
-        return {
-          label: "Bom ritmo",
-          color: "#8a681e",
-          background: "#f7efdf"
-        };
-      }
-
-      return {
-        label: "Atenção ao ritmo",
-        color: "#985047",
-        background: "#f7eae8"
-      };
-    }
-
-    function escapeHTML(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function createMetric(label, real, target) {
-      const percentage = calculatePercentage(real, target);
-      const color = getProgressColor(percentage);
-
-      return `
+      <div class="metrics-list">
         <div class="metric">
           <div class="metric-header">
-            <div class="metric-label">${label}</div>
-            <div class="metric-value">${real} <span>de ${target}</span></div>
+            <span>Prospecção</span>
+            <strong class="metric-prosp-value">0 de 0</strong>
           </div>
-          <div class="track">
-            <div class="bar" style="width: ${percentage}%; background: ${color};"></div>
+          <div class="progress-track">
+            <div class="progress-bar metric-prosp-bar"></div>
           </div>
         </div>
-      `;
-    }
 
-    function renderDashboard() {
-      elements.consultants.innerHTML = consultants.map(person => {
-        const status = getStatus(person);
-        const average = Math.round((
-          calculatePercentage(person.prospReal, person.prospMeta) +
-          calculatePercentage(person.orcReal, person.orcMeta) +
-          calculatePercentage(person.fechReal, person.fechMeta)
-        ) / 3);
+        <div class="metric">
+          <div class="metric-header">
+            <span>Orçamentos</span>
+            <strong class="metric-orc-value">0 de 0</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar metric-orc-bar"></div>
+          </div>
+        </div>
 
-        const initials = person.name.slice(0, 2).toUpperCase();
+        <div class="metric">
+          <div class="metric-header">
+            <span>Fechamentos</span>
+            <strong class="metric-fech-value">0 de 0</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar metric-fech-bar"></div>
+          </div>
+        </div>
+      </div>
 
-        return `
-          <article class="consultant-card">
-            <div class="consultant-header">
-              <div class="person">
-                <div class="avatar">${escapeHTML(initials)}</div>
-                <div class="person-name">${escapeHTML(person.name)}</div>
-              </div>
-              <div class="percentage">${average}%</div>
-            </div>
+      <div class="consultant-footer">
+        <span class="status-text">Em andamento</span>
+        <span class="ranking-position"></span>
+      </div>
+    </article>
+  </template>
 
-            <div class="metrics">
-              ${createMetric("Prospecção fria", person.prospReal, person.prospMeta)}
-              ${createMetric("Orçamentos feitos", person.orcReal, person.orcMeta)}
-              ${createMetric("Fechamentos", person.fechReal, person.fechMeta)}
-            </div>
-
-            <div class="card-footer">
-              <div class="status" style="color: ${status.color}; background: ${status.background};">
-                <div class="status-left">
-                  <span class="status-dot"></span>
-                  <span>${status.label}</span>
-                </div>
-                <span>${average}% concluído</span>
-              </div>
-            </div>
-          </article>
-        `;
-      }).join("");
-
-      const totals = consultants.reduce((result, person) => {
-        result.orcReal += person.orcReal;
-        result.orcMeta += person.orcMeta;
-        result.fechReal += person.fechReal;
-        result.fechMeta += person.fechMeta;
-        return result;
-      }, {
-        orcReal: 0,
-        orcMeta: 0,
-        fechReal: 0,
-        fechMeta: 0
-      });
-
-      elements.totalOrc.innerHTML = `${totals.orcReal} <span class="team-meta">de ${totals.orcMeta}</span>`;
-      elements.totalFech.innerHTML = `${totals.fechReal} <span class="team-meta">de ${totals.fechMeta}</span>`;
-    }
-
-    function resizeDashboard() {
-      if (window.innerWidth <= 900) {
-        elements.dashboard.style.transform = "none";
-        return;
-      }
-
-      const scale = Math.min(
-        window.innerWidth / 1920,
-        window.innerHeight / 1080
-      );
-
-      elements.dashboard.style.transform = `scale(${scale})`;
-    }
-
-    function setStatus(message, color = "#697369") {
-      elements.statusMessage.textContent = message;
-      elements.statusMessage.style.color = color;
-    }
-
-    async function loadSheet(showLoading = false) {
-      const url = localStorage.getItem(STORAGE_KEY);
-
-      if (!url) {
-        setStatus("Cole o link CSV para conectar a planilha.", "#a87927");
-        return;
-      }
-
-      try {
-        if (showLoading) {
-          setStatus("Atualizando dados...", "#a87927");
-        }
-
-        const separator = url.includes("?") ? "&" : "?";
-        const response = await fetch(`${url}${separator}cache=${Date.now()}`, {
-          cache: "no-store"
-        });
-
-        if (!response.ok) {
-          throw new Error(`Falha na conexão com código ${response.status}`);
-        }
-
-        const csvText = await response.text();
-        const parsed = convertCSVToConsultants(csvText);
-
-        if (!parsed.length) {
-          throw new Error("Nenhum consultor foi encontrado.");
-        }
-
-        consultants = parsed;
-        renderDashboard();
-
-        const time = new Date().toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        });
-
-        elements.lastUpdate.textContent = time;
-        setStatus(`Conectado e atualizado às ${time}`, "#356b47");
-      } catch (error) {
-        console.error(error);
-        elements.lastUpdate.textContent = "Últimos dados mantidos";
-        setStatus(error.message, "#a6534b");
-      }
-    }
-
-    elements.settingsButton.addEventListener("click", () => {
-      elements.settings.classList.toggle("open");
-    });
-
-    elements.saveButton.addEventListener("click", () => {
-      const url = elements.sheetUrl.value.trim();
-
-      if (!url) {
-        setStatus("Informe o link CSV do Google Sheets.", "#a6534b");
-        return;
-      }
-
-      localStorage.setItem(STORAGE_KEY, url);
-      elements.settings.classList.remove("open");
-      loadSheet(true);
-    });
-
-    elements.refreshButton.addEventListener("click", () => {
-      loadSheet(true);
-    });
-
-    window.addEventListener("resize", resizeDashboard);
-
-    elements.sheetUrl.value = localStorage.getItem(STORAGE_KEY) || "";
-
-    resizeDashboard();
-    renderDashboard();
-    loadSheet();
-
-    window.setInterval(() => {
-      loadSheet(false);
-    }, REFRESH_INTERVAL);
-  </script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
