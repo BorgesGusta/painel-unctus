@@ -1,5 +1,5 @@
 window.PAINEL_CONFIG = {
-  sheetUrl: "COLE_AQUI_O_LINK_CSV_PUBLICADO_DO_GOOGLE_SHEETS",
+  sheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTF-LoatgbiIS9wH9pqcKrs8UwFNEkQG4j6G8g9zXvufJBsYB3EPw_nTtJbqbbQOA/pub?gid=42733870&single=true&output=csv",
   refreshInterval: 15000,
   fallbackData: [
     {
