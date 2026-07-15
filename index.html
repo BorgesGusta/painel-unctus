@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f5f7f4">
+  <meta name="theme-color" content="#f4f6f2">
   <meta name="description" content="Painel comercial da Unctus Acabamentos">
-  <title>Painel Comercial | Unctus</title>
+  <title>Painel Comercial | Unctus Acabamentos</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,18 +17,18 @@
   <div class="app-shell">
     <header class="app-header">
       <div class="brand-block">
-        <span class="brand-kicker">UNCTUS ACABAMENTOS</span>
-        <h1>Painel Comercial</h1>
-        <p>Acompanhamento da equipe em tempo real</p>
+        <span class="brand-kicker" id="companyName">Unctus Acabamentos</span>
+        <h1 id="panelTitle">Painel Comercial</h1>
+        <p>Desempenho semanal da equipe</p>
       </div>
 
       <div class="header-actions">
-        <div class="update-pill" aria-live="polite">
-          <span class="status-dot"></span>
-          <span id="lastUpdate">Carregando dados</span>
+        <div class="connection-indicator" id="connectionIndicator" data-state="loading" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="statusText">Carregando dados</span>
         </div>
 
-        <button id="refreshButton" class="icon-button" type="button" aria-label="Atualizar dados" title="Atualizar dados">
+        <button id="refreshButton" class="icon-button" type="button" aria-label="Atualizar dados manualmente" title="Atualizar agora">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 11a8 8 0 1 0 2.3 5.7M20 4v7h-7"/>
           </svg>
@@ -36,46 +36,70 @@
       </div>
     </header>
 
-    <main>
+    <p id="lastUpdate" class="last-update" aria-live="polite">Carregando dados</p>
+
+    <div id="configBanner" class="banner" role="alert" hidden>
+      O painel ainda não está configurado. Abra o arquivo <code>config.js</code> e defina o link CSV publicado da aba <code>Painel_API</code> na propriedade <code>sheetUrl</code>.
+    </div>
+
+    <div id="csvErrorBanner" class="banner" role="alert" hidden>
+      <span id="csvErrorMessage"></span>
+    </div>
+
+    <main id="mainContent">
       <section class="summary-grid" aria-label="Resumo da equipe">
         <article class="summary-card">
-          <div>
-            <span class="summary-label">Orçamentos realizados</span>
-            <strong id="summaryOrcReal">0</strong>
+          <div class="summary-card-head">
+            <span class="summary-label">Orçamentos</span>
+            <span class="summary-percent" id="orcamentosPercent">0%</span>
           </div>
-          <span id="summaryOrcMeta" class="summary-meta">Meta 0</span>
+          <strong class="summary-value" id="orcamentosReal">R$ 0</strong>
+          <span class="summary-meta" id="orcamentosMeta">Meta R$ 0</span>
+          <div class="progress-track">
+            <div class="progress-bar" id="orcamentosBar"></div>
+          </div>
         </article>
 
         <article class="summary-card">
-          <div>
-            <span class="summary-label">Vendas realizadas</span>
-            <strong id="summaryFechReal">0</strong>
+          <div class="summary-card-head">
+            <span class="summary-label">Vendas</span>
+            <span class="summary-percent" id="vendasPercent">0%</span>
           </div>
-          <span id="summaryFechMeta" class="summary-meta">Meta 0</span>
+          <strong class="summary-value" id="vendasReal">R$ 0</strong>
+          <span class="summary-meta" id="vendasMeta">Meta R$ 0</span>
+          <div class="progress-track">
+            <div class="progress-bar" id="vendasBar"></div>
+          </div>
         </article>
 
         <article class="summary-card">
-          <div>
-            <span class="summary-label">Aproveitamento médio</span>
-            <strong id="summaryAverage">0%</strong>
+          <div class="summary-card-head">
+            <span class="summary-label">Performance geral</span>
+            <span class="summary-percent" id="performancePercent">0%</span>
           </div>
-          <span class="summary-meta">Equipe</span>
+          <strong class="summary-value" id="performanceAverage">0%</strong>
+          <span class="summary-meta" id="performanceCount">0 consultores</span>
+          <div class="progress-track">
+            <div class="progress-bar" id="performanceBar"></div>
+          </div>
         </article>
       </section>
 
       <section class="section-heading">
         <div>
-          <span class="section-kicker">DESEMPENHO INDIVIDUAL</span>
-          <h2>Resultado por consultor</h2>
+          <span class="section-kicker">RANKING</span>
+          <h2>Desempenho por consultor</h2>
         </div>
       </section>
 
       <section id="consultantsGrid" class="consultants-grid" aria-live="polite"></section>
+
+      <p id="emptyState" class="empty-state" hidden>Nenhum consultor foi encontrado na planilha.</p>
     </main>
 
     <footer class="app-footer">
-      <span>Dados atualizados automaticamente pelo Google Sheets</span>
-      <span id="connectionStatus">Conectando</span>
+      <span>Dados atualizados automaticamente a partir do Google Sheets</span>
+      <span>Unctus Acabamentos</span>
     </footer>
   </div>
 
@@ -84,9 +108,9 @@
       <div class="consultant-top">
         <div class="person">
           <div class="avatar"></div>
-          <div>
+          <div class="person-info">
             <h3 class="consultant-name"></h3>
-            <span class="consultant-position">Consultor comercial</span>
+            <span class="ranking-position"></span>
           </div>
         </div>
 
@@ -126,11 +150,6 @@
             <div class="progress-bar metric-leads-bar"></div>
           </div>
         </div>
-      </div>
-
-      <div class="consultant-footer">
-        <span class="status-text">Em andamento</span>
-        <span class="ranking-position"></span>
       </div>
     </article>
   </template>

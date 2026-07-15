@@ -1,51 +1,261 @@
 (() => {
+  "use strict";
+
+  const REQUIRED_HEADERS = [
+    "Tipo",
+    "Nome",
+    "ProspMeta",
+    "ProspReal",
+    "FollowMeta",
+    "FollowReal",
+    "LeadsMeta",
+    "LeadsReal",
+    "Meta",
+    "Real"
+  ];
+
+  const LEVEL_GOOD_THRESHOLD = 100;
+  const LEVEL_WARNING_THRESHOLD = 50;
+
+  class CsvStructureError extends Error {}
+
   const config = window.PAINEL_CONFIG || {};
-  const refreshInterval = Number(config.refreshInterval) || 10000;
+  const sheetUrl = String(config.sheetUrl || "").trim();
+  const refreshInterval = Number(config.refreshInterval) > 0 ? Number(config.refreshInterval) : 15000;
 
   const elements = {
-    grid: document.querySelector("#consultantsGrid"),
-    template: document.querySelector("#consultantTemplate"),
-    lastUpdate: document.querySelector("#lastUpdate"),
+    companyName: document.querySelector("#companyName"),
+    panelTitle: document.querySelector("#panelTitle"),
+    connectionIndicator: document.querySelector("#connectionIndicator"),
+    statusText: document.querySelector("#statusText"),
     refreshButton: document.querySelector("#refreshButton"),
-    summaryOrcReal: document.querySelector("#summaryOrcReal"),
-    summaryOrcMeta: document.querySelector("#summaryOrcMeta"),
-    summaryFechReal: document.querySelector("#summaryFechReal"),
-    summaryFechMeta: document.querySelector("#summaryFechMeta"),
-    summaryAverage: document.querySelector("#summaryAverage"),
-    connectionStatus: document.querySelector("#connectionStatus"),
-    updatePill: document.querySelector(".update-pill")
+    lastUpdate: document.querySelector("#lastUpdate"),
+    configBanner: document.querySelector("#configBanner"),
+    csvErrorBanner: document.querySelector("#csvErrorBanner"),
+    csvErrorMessage: document.querySelector("#csvErrorMessage"),
+    mainContent: document.querySelector("#mainContent"),
+    consultantsGrid: document.querySelector("#consultantsGrid"),
+    consultantTemplate: document.querySelector("#consultantTemplate"),
+    emptyState: document.querySelector("#emptyState"),
+    orcamentosPercent: document.querySelector("#orcamentosPercent"),
+    orcamentosReal: document.querySelector("#orcamentosReal"),
+    orcamentosMeta: document.querySelector("#orcamentosMeta"),
+    orcamentosBar: document.querySelector("#orcamentosBar"),
+    vendasPercent: document.querySelector("#vendasPercent"),
+    vendasReal: document.querySelector("#vendasReal"),
+    vendasMeta: document.querySelector("#vendasMeta"),
+    vendasBar: document.querySelector("#vendasBar"),
+    performancePercent: document.querySelector("#performancePercent"),
+    performanceAverage: document.querySelector("#performanceAverage"),
+    performanceCount: document.querySelector("#performanceCount"),
+    performanceBar: document.querySelector("#performanceBar")
   };
 
-  let currentConsultants = [];
-  let currentTeam = null;
+  const state = {
+    consultants: [],
+    teams: { orcamentos: null, vendas: null },
+    hasData: false
+  };
 
-  function percentage(real, target) {
-    const realNumber = Number(real) || 0;
-    const targetNumber = Number(target) || 0;
+  // --- CSV parsing -----------------------------------------------------
 
-    if (!targetNumber) return 0;
-
-    return Math.max(0, Math.min(100, (realNumber / targetNumber) * 100));
+  function stripBom(text) {
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   }
 
-  function averagePerformance(person) {
-    return (
-      percentage(person.prospReal, person.prospMeta) +
-      percentage(person.followReal, person.followMeta) +
-      percentage(person.leadsReal, person.leadsMeta)
-    ) / 3;
+  // RFC4180-style parser: handles quoted fields, embedded commas,
+  // embedded line breaks inside quotes, and escaped quotes ("").
+  function parseCsvRows(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let insideQuotes = false;
+    const length = text.length;
+    let i = 0;
+
+    while (i < length) {
+      const char = text[i];
+
+      if (insideQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i += 2;
+            continue;
+          }
+          insideQuotes = false;
+          i += 1;
+          continue;
+        }
+        field += char;
+        i += 1;
+        continue;
+      }
+
+      if (char === '"') {
+        insideQuotes = true;
+        i += 1;
+        continue;
+      }
+
+      if (char === ",") {
+        row.push(field);
+        field = "";
+        i += 1;
+        continue;
+      }
+
+      if (char === "\r") {
+        i += 1;
+        continue;
+      }
+
+      if (char === "\n") {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+        i += 1;
+        continue;
+      }
+
+      field += char;
+      i += 1;
+    }
+
+    row.push(field);
+    rows.push(row);
+
+    return rows.filter(cells => cells.length > 1 || cells[0] !== "");
   }
 
-  function statusFromPerformance(value) {
-    if (value >= 100) {
-      return { label: "Meta alcançada", color: "#6d8f73" };
+  function rowsToObjects(rows) {
+    if (!rows.length) {
+      throw new CsvStructureError("A planilha publicada está vazia.");
     }
 
-    if (value >= 70) {
-      return { label: "Bom ritmo", color: "#b28a4a" };
+    const headers = rows[0].map(header => header.trim());
+    const missing = REQUIRED_HEADERS.filter(required => !headers.includes(required));
+
+    if (missing.length) {
+      throw new CsvStructureError(
+        `A estrutura do CSV está incorreta. Colunas ausentes: ${missing.join(", ")}.`
+      );
     }
 
-    return { label: "Em evolução", color: "#a96a62" };
+    return rows.slice(1).map(cells => {
+      const record = {};
+      headers.forEach((header, index) => {
+        record[header] = cells[index] !== undefined ? cells[index] : "";
+      });
+      return record;
+    });
+  }
+
+  // Accepts "1234", "1234,56", "1.234,56" and "R$ 1.234,56".
+  function parseNumberBR(raw) {
+    if (raw === null || raw === undefined) return 0;
+
+    let value = String(raw).trim();
+    if (!value) return 0;
+
+    value = value.replace(/[^0-9,.-]/g, "");
+    if (!value) return 0;
+
+    const hasComma = value.includes(",");
+    const hasDot = value.includes(".");
+
+    if (hasComma && hasDot) {
+      value = value.replace(/\./g, "").replace(",", ".");
+    } else if (hasComma) {
+      value = value.replace(",", ".");
+    }
+
+    const number = parseFloat(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function normalizeName(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+  }
+
+  function buildDataFromCsv(text) {
+    const rows = parseCsvRows(stripBom(text));
+    const records = rowsToObjects(rows);
+
+    const consultants = [];
+    const teams = { orcamentos: null, vendas: null };
+
+    records.forEach(record => {
+      const tipo = String(record.Tipo || "").trim().toLowerCase();
+      const nome = String(record.Nome || "").trim();
+
+      if (!nome) return;
+
+      if (tipo === "consultor") {
+        consultants.push({
+          name: nome,
+          prospMeta: parseNumberBR(record.ProspMeta),
+          prospReal: parseNumberBR(record.ProspReal),
+          followMeta: parseNumberBR(record.FollowMeta),
+          followReal: parseNumberBR(record.FollowReal),
+          leadsMeta: parseNumberBR(record.LeadsMeta),
+          leadsReal: parseNumberBR(record.LeadsReal)
+        });
+        return;
+      }
+
+      if (tipo === "equipe") {
+        const team = {
+          name: nome,
+          meta: parseNumberBR(record.Meta),
+          real: parseNumberBR(record.Real)
+        };
+
+        const normalized = normalizeName(nome);
+        if (normalized.startsWith("orcamento")) {
+          teams.orcamentos = team;
+        } else if (normalized.startsWith("venda")) {
+          teams.vendas = team;
+        }
+      }
+    });
+
+    return { consultants, teams };
+  }
+
+  // --- Calculations ------------------------------------------------------
+
+  function safeRatio(real, meta) {
+    const metaNumber = Number(meta) || 0;
+    if (metaNumber <= 0) return 0;
+    return (Number(real) / metaNumber) * 100;
+  }
+
+  function clampPercent(value) {
+    return Math.max(0, Math.min(100, value));
+  }
+
+  function consultantPercents(person) {
+    const prosp = safeRatio(person.prospReal, person.prospMeta);
+    const follow = safeRatio(person.followReal, person.followMeta);
+    const leads = safeRatio(person.leadsReal, person.leadsMeta);
+    const performance = (prosp + follow + leads) / 3;
+    return { prosp, follow, leads, performance };
+  }
+
+  function levelFromPercent(value) {
+    if (value >= LEVEL_GOOD_THRESHOLD) return "level-good";
+    if (value >= LEVEL_WARNING_THRESHOLD) return "level-warning";
+    return "level-low";
+  }
+
+  function rankingLabel(rank) {
+    return rank === 1 ? "Destaque da equipe" : `${rank}º da equipe`;
   }
 
   function initials(name) {
@@ -58,9 +268,7 @@
       .toUpperCase();
   }
 
-  function formatNumber(value) {
-    return new Intl.NumberFormat("pt-BR").format(Number(value) || 0);
-  }
+  // --- Formatting ---------------------------------------------------------
 
   function formatCurrency(value) {
     return new Intl.NumberFormat("pt-BR", {
@@ -70,160 +278,193 @@
     }).format(Number(value) || 0);
   }
 
-  function fillMetric(card, type, real, target) {
-    const valueElement = card.querySelector(`.metric-${type}-value`);
-    const barElement = card.querySelector(`.metric-${type}-bar`);
-    const progress = percentage(real, target);
-
-    valueElement.textContent = `${formatNumber(real)} de ${formatNumber(target)}`;
-    barElement.style.width = `${progress}%`;
-
-    if (progress >= 100) {
-      barElement.style.background = "#6d8f73";
-    } else if (progress >= 60) {
-      barElement.style.background = "#b28a4a";
-    } else {
-      barElement.style.background = "#a96a62";
-    }
+  function formatNumber(value) {
+    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(Math.round(Number(value) || 0));
   }
 
-  function renderConsultants(data) {
-    const ranking = [...data].sort(
-      (first, second) => averagePerformance(second) - averagePerformance(first)
-    );
-
-    elements.grid.innerHTML = "";
-
-    data.forEach(person => {
-      const fragment = elements.template.content.cloneNode(true);
-      const card = fragment.querySelector(".consultant-card");
-      const performance = averagePerformance(person);
-      const status = statusFromPerformance(performance);
-      const rankingIndex = ranking.findIndex(item => item.name === person.name);
-
-      card.querySelector(".avatar").textContent = initials(person.name);
-      card.querySelector(".consultant-name").textContent = person.name;
-      card.querySelector(".performance-value").textContent = `${Math.round(performance)}%`;
-
-      fillMetric(card, "prosp", person.prospReal, person.prospMeta);
-      fillMetric(card, "follow", person.followReal, person.followMeta);
-      fillMetric(card, "leads", person.leadsReal, person.leadsMeta);
-
-      const statusElement = card.querySelector(".status-text");
-      statusElement.textContent = status.label;
-      statusElement.style.color = status.color;
-
-      card.querySelector(".ranking-position").textContent =
-        `${rankingIndex + 1}º da equipe`;
-
-      elements.grid.appendChild(fragment);
-    });
+  function formatPercent(value) {
+    return `${Math.round(value)}%`;
   }
 
-  function renderTeamSummary(team, consultants) {
-    const safeTeam = team || {
-      budgetMeta: 0,
-      budgetReal: 0,
-      salesMeta: 0,
-      salesReal: 0
-    };
-
-    const average = consultants.length
-      ? consultants.reduce(
-          (total, person) => total + averagePerformance(person),
-          0
-        ) / consultants.length
-      : 0;
-
-    elements.summaryOrcReal.textContent = formatCurrency(safeTeam.budgetReal);
-    elements.summaryOrcMeta.textContent =
-      `Meta ${formatCurrency(safeTeam.budgetMeta)}`;
-
-    elements.summaryFechReal.textContent = formatCurrency(safeTeam.salesReal);
-    elements.summaryFechMeta.textContent =
-      `Meta ${formatCurrency(safeTeam.salesMeta)}`;
-
-    elements.summaryAverage.textContent = `${Math.round(average)}%`;
-  }
-
-  function renderAll() {
-    renderConsultants(currentConsultants);
-    renderTeamSummary(currentTeam, currentConsultants);
-  }
-
-  function setConnectionState(type, message) {
-    elements.updatePill.classList.remove("state-warning", "state-error");
-
-    if (type === "warning") {
-      elements.updatePill.classList.add("state-warning");
-    }
-
-    if (type === "error") {
-      elements.updatePill.classList.add("state-error");
-    }
-
-    elements.connectionStatus.textContent = message;
-  }
-
-  function formatUpdateTime(date) {
-    return `Atualizado às ${date.toLocaleTimeString("pt-BR", {
+  function formatTime(date) {
+    return date.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
-    })}`;
+    });
+  }
+
+  // --- Rendering ------------------------------------------------------------
+
+  function setBar(barElement, percent) {
+    barElement.classList.remove("level-good", "level-warning", "level-low");
+    barElement.classList.add(levelFromPercent(percent));
+    barElement.style.width = `${clampPercent(percent)}%`;
+  }
+
+  function setPercentBadge(badgeElement, percent) {
+    badgeElement.classList.remove("level-good", "level-warning", "level-low");
+    badgeElement.classList.add(levelFromPercent(percent));
+    badgeElement.textContent = formatPercent(percent);
+  }
+
+  function renderTeamCard(team, elementsForCard) {
+    const safeTeam = team || { meta: 0, real: 0 };
+    const percent = safeRatio(safeTeam.real, safeTeam.meta);
+
+    elementsForCard.real.textContent = formatCurrency(safeTeam.real);
+    elementsForCard.meta.textContent = `Meta ${formatCurrency(safeTeam.meta)}`;
+    setPercentBadge(elementsForCard.percent, percent);
+    setBar(elementsForCard.bar, percent);
+  }
+
+  function renderSummary(teams, consultants) {
+    renderTeamCard(teams.orcamentos, {
+      real: elements.orcamentosReal,
+      meta: elements.orcamentosMeta,
+      percent: elements.orcamentosPercent,
+      bar: elements.orcamentosBar
+    });
+
+    renderTeamCard(teams.vendas, {
+      real: elements.vendasReal,
+      meta: elements.vendasMeta,
+      percent: elements.vendasPercent,
+      bar: elements.vendasBar
+    });
+
+    const performances = consultants.map(person => consultantPercents(person).performance);
+    const average = performances.length
+      ? performances.reduce((total, value) => total + value, 0) / performances.length
+      : 0;
+
+    elements.performanceAverage.textContent = formatPercent(average);
+    elements.performanceCount.textContent =
+      consultants.length === 1 ? "1 consultor" : `${consultants.length} consultores`;
+    setPercentBadge(elements.performancePercent, average);
+    setBar(elements.performanceBar, average);
+  }
+
+  function fillMetric(card, type, real, meta, percent) {
+    const valueElement = card.querySelector(`.metric-${type}-value`);
+    const barElement = card.querySelector(`.metric-${type}-bar`);
+
+    valueElement.textContent = `${formatNumber(real)} de ${formatNumber(meta)}`;
+    setBar(barElement, percent);
+  }
+
+  function renderConsultants(consultants) {
+    const ranked = consultants
+      .map((person, index) => ({ person, index, ...consultantPercents(person) }))
+      .sort((a, b) => b.performance - a.performance || a.index - b.index);
+
+    while (elements.consultantsGrid.firstChild) {
+      elements.consultantsGrid.removeChild(elements.consultantsGrid.firstChild);
+    }
+
+    elements.emptyState.hidden = ranked.length > 0;
+    elements.consultantsGrid.hidden = ranked.length === 0;
+
+    ranked.forEach((entry, position) => {
+      const rank = position + 1;
+      const fragment = elements.consultantTemplate.content.cloneNode(true);
+      const card = fragment.querySelector(".consultant-card");
+
+      card.classList.toggle("is-leader", rank === 1);
+      card.querySelector(".avatar").textContent = initials(entry.person.name);
+      card.querySelector(".consultant-name").textContent = entry.person.name;
+      card.querySelector(".ranking-position").textContent = rankingLabel(rank);
+      card.querySelector(".performance-value").textContent = formatPercent(entry.performance);
+
+      fillMetric(card, "prosp", entry.person.prospReal, entry.person.prospMeta, entry.prosp);
+      fillMetric(card, "follow", entry.person.followReal, entry.person.followMeta, entry.follow);
+      fillMetric(card, "leads", entry.person.leadsReal, entry.person.leadsMeta, entry.leads);
+
+      elements.consultantsGrid.appendChild(fragment);
+    });
+  }
+
+  function renderAll() {
+    renderSummary(state.teams, state.consultants);
+    renderConsultants(state.consultants);
+  }
+
+  // --- Connection / status UI ------------------------------------------------
+
+  function setConnectionState(stateName, message) {
+    elements.connectionIndicator.dataset.state = stateName;
+    elements.statusText.textContent = message;
+  }
+
+  function showConfigBanner() {
+    elements.configBanner.hidden = false;
+    elements.csvErrorBanner.hidden = true;
+    elements.mainContent.hidden = true;
+    elements.lastUpdate.textContent = "Configuração pendente";
+    setConnectionState("error", "Não configurado");
+  }
+
+  function showCsvErrorBanner(message) {
+    elements.csvErrorMessage.textContent = message;
+    elements.csvErrorBanner.hidden = false;
+  }
+
+  function hideCsvErrorBanner() {
+    elements.csvErrorBanner.hidden = true;
+  }
+
+  // --- Data loading ------------------------------------------------------------
+
+  async function fetchCsvText(url) {
+    const separator = url.includes("?") ? "&" : "?";
+    const bustedUrl = `${url}${separator}cache=${Date.now()}`;
+    const response = await fetch(bustedUrl, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP ${response.status} ao buscar o CSV.`);
+    }
+
+    return response.text();
   }
 
   async function loadData() {
-    const apiUrl = String(config.apiUrl || "").trim();
-
-    if (!apiUrl) {
-      elements.lastUpdate.textContent = "API não configurada";
-      setConnectionState("error", "Configure a API");
+    if (!sheetUrl) {
+      showConfigBanner();
       return;
     }
 
+    elements.refreshButton.disabled = true;
+    setConnectionState("warning", state.hasData ? "Atualizando" : "Conectando");
+    if (!state.hasData) {
+      elements.lastUpdate.textContent = "Carregando dados";
+    }
+
     try {
-      elements.refreshButton.disabled = true;
-      setConnectionState("warning", "Atualizando");
+      const csvText = await fetchCsvText(sheetUrl);
+      const { consultants, teams } = buildDataFromCsv(csvText);
 
-      const separator = apiUrl.includes("?") ? "&" : "?";
-      const response = await fetch(
-        `${apiUrl}${separator}cache=${Date.now()}`,
-        { cache: "no-store" }
-      );
+      state.consultants = consultants;
+      state.teams = teams;
+      state.hasData = true;
 
-      if (!response.ok) {
-        throw new Error(`Erro HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.message || "A API retornou uma falha");
-      }
-
-      if (!Array.isArray(result.consultants)) {
-        throw new Error("A lista de consultores não foi encontrada");
-      }
-
-      currentConsultants = result.consultants;
-      currentTeam = result.team || null;
-
+      hideCsvErrorBanner();
+      elements.mainContent.hidden = false;
       renderAll();
 
-      const updatedDate = result.updatedAt
-        ? new Date(result.updatedAt)
-        : new Date();
-
-      elements.lastUpdate.textContent = formatUpdateTime(updatedDate);
+      elements.lastUpdate.textContent = `Atualizado às ${formatTime(new Date())}`;
       setConnectionState("success", "Conectado");
     } catch (error) {
-      console.error("Erro ao atualizar o painel:", error);
+      console.error("Falha ao atualizar o painel:", error);
 
-      if (currentConsultants.length) {
-        renderAll();
+      if (error instanceof CsvStructureError) {
+        showCsvErrorBanner(error.message);
+      }
+
+      if (state.hasData) {
+        elements.mainContent.hidden = false;
         elements.lastUpdate.textContent = "Mantendo os últimos dados";
       } else {
+        elements.mainContent.hidden = true;
         elements.lastUpdate.textContent = "Não foi possível carregar os dados";
       }
 
@@ -233,8 +474,24 @@
     }
   }
 
-  elements.refreshButton.addEventListener("click", loadData);
+  function init() {
+    if (config.companyName) {
+      elements.companyName.textContent = config.companyName;
+    }
+    if (config.panelTitle) {
+      elements.panelTitle.textContent = config.panelTitle;
+      document.title = `${config.panelTitle} | ${config.companyName || "Unctus Acabamentos"}`;
+    }
 
-  loadData();
-  window.setInterval(loadData, refreshInterval);
+    if (!sheetUrl || sheetUrl.startsWith("COLE_AQUI")) {
+      showConfigBanner();
+      return;
+    }
+
+    elements.refreshButton.addEventListener("click", loadData);
+    loadData();
+    window.setInterval(loadData, refreshInterval);
+  }
+
+  init();
 })();
